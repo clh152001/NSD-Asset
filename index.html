@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>醫院資產相機掃描測試</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white rounded-2xl shadow-xl p-5 w-full max-w-sm text-center">
+        <h1 class="text-base font-bold text-slate-800 mb-3">🏥 掃描器相機測試</h1>
+        
+        <!-- 相機鏡頭渲染容器 -->
+        <div id="qr-reader" class="w-full rounded-xl overflow-hidden bg-slate-900 border border-slate-200 mb-4" style="min-height: 250px;"></div>
+        
+        <div id="resultBox" class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 hidden">
+            <!-- 掃描結果顯示區 -->
+        </div>
+    </div>
+
+    <script>
+        function onScanSuccess(decodedText) {
+            console.log(`掃描成功: ${decodedText}`);
+            
+            const resultBox = document.getElementById('resultBox');
+            resultBox.classList.remove('hidden');
+            
+            resultBox.innerHTML = `
+                <p class="text-emerald-600 font-bold mb-1">🎉 成功掃描到條碼！</p>
+                <p class="text-slate-800 text-sm font-extrabold bg-white p-2 rounded border border-emerald-200">${decodedText}</p>
+                <p class="text-slate-400 text-[10px] mt-1">（相機功能測試成功！）</p>
+            `;
+        }
+
+        // 自動啟動相機
+        document.addEventListener("DOMContentLoaded", () => {
+            const html5QrCode = new Html5Qrcode("qr-reader");
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 150 } },
+                onScanSuccess,
+                (errorMessage) => { /* 略過未對準時的錯誤 */ }
+            ).catch(err => {
+                alert("無法啟動相機，請確認是否已授權相機權限：" + err);
+            });
+        });
+    </script>
+</body>
+</html>

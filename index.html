@@ -3,49 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>醫院資產相機掃描測試</title>
+    <title>NSD 資產與掃描管理系統</title>
+    <!-- 引入 Tailwind CSS 與掃描套件 -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-slate-100 flex flex-col items-center justify-center min-h-screen p-4">
+<body class="bg-slate-100 min-h-screen p-4 flex flex-col items-center">
 
-    <div class="bg-white rounded-2xl shadow-xl p-5 w-full max-w-sm text-center">
-        <h1 class="text-base font-bold text-slate-800 mb-3">🏥 掃描器相機測試</h1>
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-5 mb-4">
+        <h1 class="text-lg font-bold text-slate-800 mb-4 text-center">🏥 NSD 資產管理系統</h1>
         
-        <!-- 相機鏡頭渲染容器 -->
-        <div id="qr-reader" class="w-full rounded-xl overflow-hidden bg-slate-900 border border-slate-200 mb-4" style="min-height: 250px;"></div>
-        
-        <div id="resultBox" class="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-200 hidden">
-            <!-- 掃描結果顯示區 -->
+        <!-- 手動輸入與查詢區塊 -->
+        <div class="flex gap-2 mb-4">
+            <input type="text" id="eamInput" placeholder="請輸入或掃描 EAM 編號..." 
+                   class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+            <button onclick="handleSearch()" class="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all">
+                查詢
+            </button>
+        </div>
+
+        <!-- 開啟相機掃描按鈕 -->
+        <button onclick="toggleScanner()" class="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md hover:bg-emerald-700 transition-all">
+            <i class="fa-solid fa-camera"></i> 開啟相機即時掃描
+        </button>
+
+        <!-- 相機掃描器容器 (預設隱藏) -->
+        <div id="scannerContainer" class="hidden mt-4 border border-slate-200 rounded-xl p-3 bg-slate-50">
+            <div id="qr-reader" class="w-full rounded-lg overflow-hidden bg-slate-900" style="min-height: 200px;"></div>
+            <button onclick="toggleScanner()" class="w-full mt-2 bg-rose-500 text-white py-1.5 rounded-lg text-xs font-bold">
+                關閉相機
+            </button>
+        </div>
+    </div>
+
+    <!-- 結果顯示區塊 -->
+    <div id="resultBox" class="w-full max-w-md bg-white rounded-2xl shadow-xl p-4 hidden">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">查詢與掃描結果</h2>
+        <div id="resultContent" class="text-sm text-slate-700">
+            <!-- 動態內容 -->
         </div>
     </div>
 
     <script>
-        function onScanSuccess(decodedText) {
-            console.log(`掃描成功: ${decodedText}`);
-            
-            const resultBox = document.getElementById('resultBox');
-            resultBox.classList.remove('hidden');
-            
-            resultBox.innerHTML = `
-                <p class="text-emerald-600 font-bold mb-1">🎉 成功掃描到條碼！</p>
-                <p class="text-slate-800 text-sm font-extrabold bg-white p-2 rounded border border-emerald-200">${decodedText}</p>
-                <p class="text-slate-400 text-[10px] mt-1">（相機功能測試成功！）</p>
-            `;
+        let html5QrCode = null;
+        let isScannerOpen = false;
+
+        // 控制相機開關
+        function toggleScanner() {
+            const container = document.getElementById('scannerContainer');
+            isScannerOpen = !isScannerOpen;
+
+            if (isScannerOpen) {
+                container.classList.remove('hidden');
+                if (!html5QrCode) {
+                    html5QrCode = new Html5Qrcode("qr-reader");
+                }
+                html5QrCode.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 220, height: 120 } },
+                    onScanSuccess,
+                    (err) => {}
+                ).catch(err => {
+                    alert("無法啟動相機：" + err);
+                    isScannerOpen = false;
+                    container.classList.add('hidden');
+                });
+            } else {
+                if (html5QrCode && html5QrCode.isScanning) {
+                    html5QrCode.stop().then(() => {
+                        container.classList.add('hidden');
+                    }).catch(err => console.error(err));
+                } else {
+                    container.classList.add('hidden');
+                }
+            }
         }
 
-        // 自動啟動相機
-        document.addEventListener("DOMContentLoaded", () => {
-            const html5QrCode = new Html5Qrcode("qr-reader");
-            html5QrCode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 150 } },
-                onScanSuccess,
-                (errorMessage) => { /* 略過未對準時的錯誤 */ }
-            ).catch(err => {
-                alert("無法啟動相機，請確認是否已授權相機權限：" + err);
-            });
-        });
+        // 掃描成功時觸發
+        function onScanSuccess(decodedText) {
+            console.log(`掃描成功: ${decodedText}`);
+            document.getElementById('eamInput').value = decodedText;
+            toggleScanner(); // 自動關閉相機
+            
+            // 顯示結果
+            showResult(`✅ 成功掃描到 EAM：<strong>${decodedText}</strong><br><span class="text-xs text-slate-400">（等待連接 GAS 後端進行資料庫查詢...）</span>`);
+        }
+
+        // 手動查詢按鈕
+        function handleSearch() {
+            const val = document.getElementById('eamInput').value.trim();
+            if (!val) {
+                alert('請先輸入或掃描編號');
+                return;
+            }
+            showResult(`🔍 正在查詢 EAM：<strong>${val}</strong>...`);
+            
+            // 💡 等 GAS 恢復後，這裡會換成真正的 fetch('你的GAS網址', { method: 'POST', body: ... })
+        }
+
+        function showResult(html) {
+            const box = document.getElementById('resultBox');
+            box.classList.remove('hidden');
+            document.getElementById('resultContent').innerHTML = html;
+        }
     </script>
 </body>
 </html>
